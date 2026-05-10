@@ -36,9 +36,8 @@
 #define C2_NBYTE          6     /* encoded bytes per frame */
 #define PKT_LEN           (FRAMES_PER_PKT * C2_NBYTE)  /* 24 bytes */
 
-/* ── RTT channel 1 for binary PCM output ─────────────────────────────────── */
-#define RTT_PCM_CH  1
-static uint8_t rtt_pcm_buf[2048];
+/* ── RTT PCM output on channel 0 (same as console) ───────────────────────── */
+#define RTT_PCM_CH  0
 
 static void rtt_write_pcm(const short *frame, uint8_t seq)
 {
@@ -246,10 +245,6 @@ int main(void)
 		return -1;
 	}
 	codec2_set_natural_or_gray(codec2, 0);
-
-	SEGGER_RTT_ConfigUpBuffer(RTT_PCM_CH, "PCM",
-				  rtt_pcm_buf, sizeof(rtt_pcm_buf),
-				  SEGGER_RTT_MODE_NO_BLOCK_SKIP);
 
 #ifdef CONFIG_LORA_VOICE_TX
 	k_thread_create(&enc_td, enc_stack, K_THREAD_STACK_SIZEOF(enc_stack),

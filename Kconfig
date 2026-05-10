@@ -1,0 +1,19 @@
+mainmenu "Codec2 LoRa Voice"
+
+source "Kconfig.zephyr"
+
+choice LORA_VOICE_ROLE
+	prompt "LoRa voice role"
+	default LORA_VOICE_RX
+
+config LORA_VOICE_TX
+	bool "Transmitter (TX)"
+	help
+	  Encode audio from hts1a test data with Codec2 and transmit over LoRa.
+
+config LORA_VOICE_RX
+	bool "Receiver (RX)"
+	help
+	  Receive LoRa packets, decode with Codec2, output raw PCM via RTT channel 1.
+
+endchoice

@@ -108,12 +108,23 @@ static void fill_packet(uint8_t *pkt)
 
 static void tx_fn(void *a, void *b, void *c)
 {
+	/* One packet = FRAMES_PER_PKT frames × 20 ms/frame at 8 kHz */
+	const int64_t PKT_INTERVAL_MS = FRAMES_PER_PKT * 20;
+	int64_t deadline = k_uptime_get();
+
 	while (true) {
+		deadline += PKT_INTERVAL_MS;
 		fill_packet(pkt_buf);
 		int ret = lora_send(lora_dev, pkt_buf, PKT_LEN);
 
 		if (ret < 0) {
 			printk("LoRa TX err: %d\n", ret);
+		}
+
+		int64_t slack = deadline - k_uptime_get();
+
+		if (slack > 0) {
+			k_sleep(K_MSEC(slack));
 		}
 	}
 }
@@ -139,10 +150,10 @@ typedef struct {
 } RawPacket;
 
 K_MSGQ_DEFINE(raw_pkt_q, sizeof(RawPacket), 32, 4);
-K_MSGQ_DEFINE(pcm_out_q, C2_NSAM * sizeof(short), 20, 4);
 
 static short    pcm_buf[C2_NSAM];
 static uint8_t *dec_frame_ptr;
+static uint8_t  rtt_seq;
 
 static void rx_callback(const struct device *dev, uint8_t *payload,
 			uint16_t size, int16_t rssi, int8_t snr,
@@ -177,7 +188,7 @@ static void process_packet(const uint8_t *data, int len)
 		dec_frame_ptr = (uint8_t *)(data + f * C2_NBYTE);
 		k_sem_give(&dec_start_sem);
 		k_sem_take(&dec_done_sem, K_FOREVER);
-		k_msgq_put(&pcm_out_q, pcm_buf, K_NO_WAIT);
+		rtt_write_pcm(pcm_buf, rtt_seq++);
 	}
 }
 
@@ -193,21 +204,9 @@ static void decode_fn(void *a, void *b, void *c)
 	}
 }
 
-static void serial_out_fn(void *a, void *b, void *c)
-{
-	short frame[C2_NSAM];
-	uint8_t seq = 0;
-
-	while (true) {
-		k_msgq_get(&pcm_out_q, frame, K_FOREVER);
-		rtt_write_pcm(frame, seq++);
-	}
-}
-
 K_THREAD_STACK_DEFINE(dec_codec_stack, 16384);
 K_THREAD_STACK_DEFINE(decode_stack,    2048);
-K_THREAD_STACK_DEFINE(serout_stack,    1024);
-static struct k_thread dec_codec_td, decode_td, serout_td;
+static struct k_thread dec_codec_td, decode_td;
 
 #endif /* CONFIG_LORA_VOICE_RX */
 
@@ -268,11 +267,6 @@ int main(void)
 			K_THREAD_STACK_SIZEOF(decode_stack),
 			decode_fn, NULL, NULL, NULL, 4, 0, K_NO_WAIT);
 	k_thread_name_set(&decode_td, "decode");
-
-	k_thread_create(&serout_td, serout_stack,
-			K_THREAD_STACK_SIZEOF(serout_stack),
-			serial_out_fn, NULL, NULL, NULL, 3, 0, K_NO_WAIT);
-	k_thread_name_set(&serout_td, "serout");
 
 	lora_recv_async(lora_dev, rx_callback, NULL);
 	printk("RX started\n");

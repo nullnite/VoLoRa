@@ -7,11 +7,11 @@ import threading
 
 NSAM = 160
 RATE = 8000
-FRAME_LEN = NSAM * 2   # 320 bytes of s16-le PCM
-HEADER_LEN = 6         # 0xFF 0xFE seq len_lo len_hi xor_chk
+FRAME_LEN = NSAM * 2  # 320 bytes of s16-le PCM
+HEADER_LEN = 6  # 0xFF 0xFE seq len_lo len_hi xor_chk
 MARKER = b"\xff\xfe"
 
-audio_q = queue.Queue(maxsize=2000)
+audio_q = queue.Queue(maxsize=30)  # 30 frames = 600 ms max latency
 stats = {
     "frames": 0,
     "underruns": 0,
@@ -52,16 +52,16 @@ def parse_frames(buf):
             _print_text(buf[:idx])
 
         if len(buf) < idx + HEADER_LEN + FRAME_LEN:
-            buf = buf[idx:]   # incomplete frame — wait for more data
+            buf = buf[idx:]  # incomplete frame — wait for more data
             break
 
-        seq   = buf[idx + 2]
-        ln    = buf[idx + 3] | (buf[idx + 4] << 8)
-        chk   = buf[idx + 5]
+        seq = buf[idx + 2]
+        ln = buf[idx + 3] | (buf[idx + 4] << 8)
+        chk = buf[idx + 5]
 
         if ln != FRAME_LEN:
             stats["bad_len"] += 1
-            buf = buf[idx + 1:]
+            buf = buf[idx + 1 :]
             continue
 
         payload = buf[idx + HEADER_LEN : idx + HEADER_LEN + FRAME_LEN]
@@ -71,17 +71,19 @@ def parse_frames(buf):
             computed ^= b
         if computed != chk:
             stats["bad_chk"] += 1
-            buf = buf[idx + 1:]
+            buf = buf[idx + 1 :]
             continue
 
         if expected_seq is not None and seq != expected_seq:
             stats["bad_seq"] += 1
         expected_seq = (seq + 1) & 0xFF
 
-        samples = np.frombuffer(bytes(payload), dtype=np.int16).astype(np.float32) / 32768.0
+        samples = (
+            np.frombuffer(bytes(payload), dtype=np.int16).astype(np.float32) / 32768.0
+        )
         frames.append(samples)
         stats["frames"] += 1
-        buf = buf[idx + HEADER_LEN + FRAME_LEN:]
+        buf = buf[idx + HEADER_LEN + FRAME_LEN :]
 
     return buf, frames
 
@@ -138,23 +140,7 @@ def capture():
 
 
 def play():
-    print("Buffering...")
-    deadline = time.time() + 30
-    while audio_q.qsize() < 60 and time.time() < deadline:
-        time.sleep(0.1)
-        if audio_q.qsize() > 0:
-            print(
-                f"  buffering: {audio_q.qsize()} frames  "
-                f"bad_len={stats['bad_len']} bad_chk={stats['bad_chk']} bad_seq={stats['bad_seq']}"
-            )
-
-    print(f"Starting with {audio_q.qsize()} frames buffered")
-    print(
-        f"Parse stats: frames={stats['frames']} bad_len={stats['bad_len']} "
-        f"bad_chk={stats['bad_chk']} bad_seq={stats['bad_seq']}"
-    )
     print(sounddevice.query_devices())
-
     try:
         with sounddevice.OutputStream(
             samplerate=RATE,
@@ -162,7 +148,7 @@ def play():
             dtype="float32",
             blocksize=NSAM,
             callback=audio_callback,
-            latency="high",
+            latency=0.05,
         ) as stream:
             print(f"Stream opened: {stream.samplerate}Hz latency={stream.latency:.3f}s")
             last = stats.copy()
@@ -178,6 +164,7 @@ def play():
     except Exception as e:
         print(f"Stream error: {e}")
         import traceback
+
         traceback.print_exc()
 
 

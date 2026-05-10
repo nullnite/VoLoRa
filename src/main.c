@@ -1,47 +1,80 @@
-/*
- * Copyright (c) 2016 Intel Corporation
- *
- * SPDX-License-Identifier: Apache-2.0
- */
-
 #include <stdio.h>
+#include <string.h>
 #include <zephyr/kernel.h>
-#include <zephyr/drivers/gpio.h>
+#include <zephyr/drivers/lora.h>
 
-/* 1000 msec = 1 sec */
-#define SLEEP_TIME_MS 1000
+#define LORA_NODE     DT_ALIAS(lora0)
+#define FREQUENCY     868000000  /* Hz - change to 915000000 for US */
+#define TX_POWER      14         /* dBm */
+#define PAYLOAD       "LLCC68 test"
 
-/* The devicetree node identifier for the "led0" alias. */
-#define LED0_NODE DT_ALIAS(led0)
+static const struct device *lora_dev = DEVICE_DT_GET(LORA_NODE);
 
-/*
- * A build error on this line means your board is unsupported.
- * See the sample documentation for information on how to fix this.
- */
-static const struct gpio_dt_spec led = GPIO_DT_SPEC_GET(LED0_NODE, gpios);
+static struct lora_modem_config cfg = {
+    .frequency   = FREQUENCY,
+    .bandwidth   = BW_125_KHZ,
+    .datarate    = SF_7,
+    .coding_rate = CR_4_5,
+    .preamble_len = 8,
+    .tx_power    = TX_POWER,
+    .tx          = true,
+};
 
-int main(void) {
+int main(void)
+{
     int ret;
-    bool led_state = true;
+    uint8_t buf[64];
+    int16_t rssi;
+    int8_t  snr;
+    int seq = 0;
 
-    if (!gpio_is_ready_dt(&led)) {
-        return 0;
+    if (!device_is_ready(lora_dev)) {
+        printf("LoRa device not ready\n");
+        return -1;
     }
+    printf("LLCC68 ready\n");
 
-    ret = gpio_pin_configure_dt(&led, GPIO_OUTPUT_ACTIVE);
-    if (ret < 0) {
-        return 0;
-    }
-
+    /* TX: send a packet, then flip to RX to listen for an echo */
     while (1) {
-        ret = gpio_pin_toggle_dt(&led);
+        /* --- TX --- */
+        cfg.tx = true;
+        ret = lora_config(lora_dev, &cfg);
         if (ret < 0) {
-            return 0;
+            printf("TX config failed: %d\n", ret);
+            k_msleep(1000);
+            continue;
         }
 
-        led_state = !led_state;
-        printf("LED state: %s\n", led_state ? "ON" : "OFF");
-        k_msleep(SLEEP_TIME_MS);
+        snprintf(buf, sizeof(buf), "%s #%d", PAYLOAD, seq++);
+        ret = lora_send(lora_dev, buf, strlen(buf));
+        if (ret < 0) {
+            printf("TX failed: %d\n", ret);
+        } else {
+            printf("TX: \"%s\"\n", buf);
+        }
+
+        /* --- RX: listen for 5 s for a reply --- */
+        cfg.tx = false;
+        ret = lora_config(lora_dev, &cfg);
+        if (ret < 0) {
+            printf("RX config failed: %d\n", ret);
+            k_msleep(1000);
+            continue;
+        }
+
+        ret = lora_recv(lora_dev, buf, sizeof(buf) - 1, K_SECONDS(5), &rssi, &snr);
+        if (ret > 0) {
+            buf[ret] = '\0';
+            printf("RX (%d B) RSSI=%d dBm SNR=%d dB: \"%s\"\n",
+                   ret, rssi, snr, buf);
+        } else if (ret == -EAGAIN) {
+            printf("RX timeout\n");
+        } else {
+            printf("RX error: %d\n", ret);
+        }
+
+        k_msleep(500);
     }
+
     return 0;
 }

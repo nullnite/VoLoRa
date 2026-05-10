@@ -1,36 +1,58 @@
 / {
-    chosen {
-        zephyr,console = &cdc_acm_uart0;
-        zephyr,shell-uart = &cdc_acm_uart0;
-    };
-
     leds {
         compatible = "gpio-leds";
 
         led0: led_0 {
-            gpios = <&gpio1 6 GPIO_ACTIVE_HIGH>;  /* RED   - P1.06 */
+            gpios = <&gpio1 6 GPIO_ACTIVE_HIGH>;  /* RED   - P1.06 (also SS2) */
             label = "LED Red";
         };
         led1: led_1 {
-            gpios = <&gpio0 21 GPIO_ACTIVE_HIGH>; /* GREEN - P0.21 */
+            gpios = <&gpio0 21 GPIO_ACTIVE_HIGH>; /* GREEN - P0.21 (also SS3) */
             label = "LED Green";
         };
-        led2: led_2 {
-            gpios = <&gpio1 8 GPIO_ACTIVE_HIGH>;  /* BLUE  - P1.08 */
-            label = "LED Blue";
-        };
+        /* led2 removed: P1.08 is SS1 for LoRa chip 1 */
     };
 
     aliases {
         led0 = &led0;
         led1 = &led1;
-        led2 = &led2;
+        lora0 = &lora0;
     };
 };
 
-&zephyr_udc0 {
-    cdc_acm_uart0: cdc_acm_uart0 {
-        compatible = "zephyr,cdc-acm-uart";
+&pinctrl {
+    spi1_default: spi1_default {
+        group1 {
+            psels = <NRF_PSEL(SPIM_SCK,  0, 28)>,
+                    <NRF_PSEL(SPIM_MOSI, 1, 10)>,
+                    <NRF_PSEL(SPIM_MISO, 0, 26)>;
+        };
+    };
+    spi1_sleep: spi1_sleep {
+        group1 {
+            psels = <NRF_PSEL(SPIM_SCK,  0, 28)>,
+                    <NRF_PSEL(SPIM_MOSI, 1, 10)>,
+                    <NRF_PSEL(SPIM_MISO, 0, 26)>;
+            low-power-enable;
+        };
+    };
+};
+
+&spi1 {
+    status = "okay";
+    pinctrl-0 = <&spi1_default>;
+    pinctrl-1 = <&spi1_sleep>;
+    pinctrl-names = "default", "sleep";
+    cs-gpios = <&gpio1 8 GPIO_ACTIVE_LOW>; /* SS1 - P1.08 */
+
+    lora0: lora@0 {
+        compatible = "semtech,sx1262";
+        reg = <0>;
+        spi-max-frequency = <DT_FREQ_M(8)>;
+        /* P0.20 is unconnected on PCB; driver needs the property but LLCC68 uses power-on reset */
+        reset-gpios = <&gpio0 25 GPIO_ACTIVE_LOW>;
+        busy-gpios  = <&gpio0 16 GPIO_ACTIVE_HIGH>; /* BUSY (shared via diodes) - P0.16 */
+        dio1-gpios  = <&gpio0 24 GPIO_ACTIVE_HIGH>; /* DIO1_1 - P0.24 */
     };
 };
 
@@ -46,5 +68,5 @@
     status = "okay";
 };
 
-&vregmain { regulator-initial-mode = <NRF5X_REG_MODE_LDO>; };
+&vregmain  { regulator-initial-mode = <NRF5X_REG_MODE_LDO>; };
 &vregradio { regulator-initial-mode = <NRF5X_REG_MODE_LDO>; };

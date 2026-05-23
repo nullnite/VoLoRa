@@ -5,6 +5,17 @@
  * INT: P0.16 (nRF5340) <- GPIO1/Pin 8 (nPM1300)
  */
 
+/* No LFXO on this board - use internal RC oscillator */
+&lfxo {
+	status = "disabled";
+};
+
+/* HFXO: 8 pF with internal load capacitors */
+&hfxo {
+	load-capacitors = "internal";
+	load-capacitance-femtofarad = <8000>;
+};
+
 &pinctrl {
 	i2c1_default: i2c1_default {
 		group1 {

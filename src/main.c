@@ -21,6 +21,8 @@ static const struct device *leds = DEVICE_DT_GET(DT_NODELABEL(npm1300_leds));
 int main(void) {
     bool led_state = true;
 
+    printf("VoLoRa booted\n");
+
     if (!device_is_ready(leds)) {
         printf("nPM1300 LED device not ready\n");
         return 0;

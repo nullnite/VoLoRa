@@ -76,9 +76,9 @@
 		npm1300_leds: leds {
 			compatible = "nordic,npm1300-led";
 			/* LED0 (pin 25) = Blue, LED1 (pin 26) = Green, LED2 (pin 27) = Red */
-			nordic,led0-mode = "host";
+			nordic,led0-mode = "charging";
 			nordic,led1-mode = "host";
-			nordic,led2-mode = "host";
+			nordic,led2-mode = "error";
 		};
 	};
 };
@@ -97,6 +97,7 @@
 	chosen {
 		zephyr,console = &cdc_acm_uart0;
 		zephyr,shell-uart = &cdc_acm_uart0;
+		zephyr,uart-mcumgr = &cdc_acm_uart0;
 	};
 };
 

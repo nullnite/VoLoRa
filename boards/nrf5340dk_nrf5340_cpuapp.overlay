@@ -16,6 +16,11 @@
 	load-capacitance-femtofarad = <8000>;
 };
 
+/* No QSPI flash on this board */
+&qspi {
+	status = "disabled";
+};
+
 &pinctrl {
 	i2c1_default: i2c1_default {
 		group1 {
@@ -75,5 +80,29 @@
 			nordic,led1-mode = "host";
 			nordic,led2-mode = "host";
 		};
+	};
+};
+
+/* Override button0 for MCUboot DFU entry (P1.13, active low) */
+/ {
+	buttons {
+		compatible = "gpio-keys";
+
+		button0: button_0 {
+			gpios = <&gpio1 13 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+			label = "DFU Button";
+		};
+	};
+
+	chosen {
+		zephyr,console = &cdc_acm_uart0;
+		zephyr,shell-uart = &cdc_acm_uart0;
+	};
+};
+
+/* USB CDC ACM for console output and MCUmgr DFU */
+&zephyr_udc0 {
+	cdc_acm_uart0: cdc_acm_uart0 {
+		compatible = "zephyr,cdc-acm-uart";
 	};
 };

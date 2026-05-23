@@ -5,9 +5,12 @@
  */
 
 #include <stdio.h>
-#include <zephyr/drivers/i2c.h>
 #include <zephyr/drivers/led.h>
+#include <zephyr/drivers/uart.h>
 #include <zephyr/kernel.h>
+#include <zephyr/logging/log.h>
+
+LOG_MODULE_REGISTER(volora, LOG_LEVEL_INF);
 
 /* 1000 msec = 1 sec */
 #define SLEEP_TIME_MS 1000
@@ -18,27 +21,14 @@
 #define NPM1300_LED_RED   2
 
 static const struct device *leds = DEVICE_DT_GET(DT_NODELABEL(npm1300_leds));
-static const struct device *i2c_dev = DEVICE_DT_GET(DT_NODELABEL(i2c1));
 
 int main(void) {
     bool led_state = true;
-
-    printf("VoLoRa booted\n");
-
-    if (!device_is_ready(i2c_dev)) {
-        printf("I2C bus not ready\n");
-        return 0;
-    }
-    printf("I2C bus ready\n");
-
-    /* Scan for nPM1300 at address 0x6b */
-    uint8_t dummy;
-    int ret = i2c_read(i2c_dev, &dummy, 0, 0x6b);
-    printf("I2C probe 0x6b: %d\n", ret);
+    
+    LOG_INF("VoLoRa booted");
 
     if (!device_is_ready(leds)) {
-        printf("nPM1300 LED device not ready\n");
-        /* Keep running so we can see the output */
+        LOG_ERR("nPM1300 LED device not ready");
         while (1) {
             k_msleep(1000);
         }
@@ -52,7 +42,7 @@ int main(void) {
         }
 
         led_state = !led_state;
-        printf("LED state: %s\n", led_state ? "ON" : "OFF");
+        LOG_INF("LED state: %s", led_state ? "ON" : "OFF");
         k_msleep(SLEEP_TIME_MS);
     }
     return 0;

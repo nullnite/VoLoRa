@@ -1,0 +1,17 @@
+/* MCUboot overlay for VoLoRa custom board */
+
+/* No LFXO on this board */
+&lfxo {
+	status = "disabled";
+};
+
+/* HFXO: 8 pF with internal load capacitors */
+&hfxo {
+	load-capacitors = "internal";
+	load-capacitance-femtofarad = <8000>;
+};
+
+/* No QSPI flash on this board */
+&qspi {
+	status = "disabled";
+};

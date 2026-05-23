@@ -6,6 +6,7 @@
 
 #include <stdio.h>
 #include <zephyr/drivers/led.h>
+#include <zephyr/drivers/lora.h>
 #include <zephyr/drivers/mfd/npm13xx.h>
 #include <zephyr/drivers/uart.h>
 #include <zephyr/kernel.h>
@@ -33,6 +34,7 @@ LOG_MODULE_REGISTER(volora, LOG_LEVEL_INF);
 
 static const struct device *leds = DEVICE_DT_GET(DT_NODELABEL(npm1300_leds));
 static const struct device *pmic = DEVICE_DT_GET(DT_NODELABEL(npm1300));
+static const struct device *lora_dev = DEVICE_DT_GET(DT_NODELABEL(lora));
 
 /**
  * Enable nPM1300 VBUSOUT by setting current limit and triggering update.
@@ -81,6 +83,30 @@ int main(void) {
 
     /* Enable VBUSOUT so nRF5340 can detect USB VBUS */
     npm1300_enable_vbusout();
+
+    /* Test LoRa module */
+    if (!device_is_ready(lora_dev)) {
+        LOG_ERR("LoRa device not ready");
+    } else {
+        LOG_INF("LoRa SX1262 initialized successfully");
+
+        struct lora_modem_config config = {
+            .frequency = 868000000,
+            .bandwidth = BW_125_KHZ,
+            .datarate = SF_7,
+            .coding_rate = CR_4_5,
+            .preamble_len = 8,
+            .tx_power = 14,
+            .tx = true,
+        };
+
+        int ret = lora_config(lora_dev, &config);
+        if (ret < 0) {
+            LOG_ERR("LoRa config failed: %d", ret);
+        } else {
+            LOG_INF("LoRa configured: 868MHz, SF7, BW125, 14dBm");
+        }
+    }
 
     if (!device_is_ready(leds)) {
         LOG_ERR("nPM1300 LED device not ready");

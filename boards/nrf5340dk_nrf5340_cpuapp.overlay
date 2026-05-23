@@ -5,6 +5,8 @@
  * INT: P0.16 (nRF5340) <- GPIO1/Pin 8 (nPM1300)
  */
 
+#include <zephyr/dt-bindings/lora/sx126x.h>
+
 /* No LFXO on this board - use internal RC oscillator */
 &lfxo {
 	status = "disabled";
@@ -34,6 +36,23 @@
 		group1 {
 			psels = <NRF_PSEL(TWIM_SDA, 0, 9)>,
 				<NRF_PSEL(TWIM_SCL, 1, 2)>;
+			low-power-enable;
+		};
+	};
+
+	spi4_default: spi4_default {
+		group1 {
+			psels = <NRF_PSEL(SPIM_SCK, 0, 28)>,
+				<NRF_PSEL(SPIM_MOSI, 0, 29)>,
+				<NRF_PSEL(SPIM_MISO, 1, 10)>;
+		};
+	};
+
+	spi4_sleep: spi4_sleep {
+		group1 {
+			psels = <NRF_PSEL(SPIM_SCK, 0, 28)>,
+				<NRF_PSEL(SPIM_MOSI, 0, 29)>,
+				<NRF_PSEL(SPIM_MISO, 1, 10)>;
 			low-power-enable;
 		};
 	};
@@ -81,6 +100,28 @@
 			nordic,led1-mode = "host";
 			nordic,led2-mode = "error";
 		};
+	};
+};
+
+/* SPI4 for Wio-SX1262 LoRa module */
+&spi4 {
+	compatible = "nordic,nrf-spim";
+	status = "okay";
+	pinctrl-0 = <&spi4_default>;
+	pinctrl-1 = <&spi4_sleep>;
+	pinctrl-names = "default", "sleep";
+	cs-gpios = <&gpio0 24 GPIO_ACTIVE_LOW>;
+
+	lora: sx1262@0 {
+		compatible = "semtech,sx1262";
+		reg = <0>;
+		spi-max-frequency = <16000000>;
+		reset-gpios = <&gpio0 26 GPIO_ACTIVE_LOW>;
+		busy-gpios = <&gpio0 0 GPIO_ACTIVE_HIGH>;
+		dio1-gpios = <&gpio0 1 GPIO_ACTIVE_HIGH>;
+		dio2-tx-enable;
+		dio3-tcxo-voltage = <SX126X_DIO3_TCXO_1V8>;
+		tcxo-power-startup-delay-ms = <5>;
 	};
 };
 

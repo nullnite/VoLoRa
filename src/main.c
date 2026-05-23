@@ -5,38 +5,32 @@
  */
 
 #include <stdio.h>
-#include <zephyr/drivers/gpio.h>
+#include <zephyr/drivers/led.h>
 #include <zephyr/kernel.h>
 
 /* 1000 msec = 1 sec */
-#define SLEEP_TIME_MS 3000
+#define SLEEP_TIME_MS 1000
 
-/* The devicetree node identifier for the "led0" alias. */
-#define LED0_NODE DT_ALIAS(led0)
+/* nPM1300 LED indices: 0=Blue, 1=Green, 2=Red */
+#define NPM1300_LED_BLUE  0
+#define NPM1300_LED_GREEN 1
+#define NPM1300_LED_RED   2
 
-/*
- * A build error on this line means your board is unsupported.
- * See the sample documentation for information on how to fix this.
- */
-static const struct gpio_dt_spec led = GPIO_DT_SPEC_GET(LED0_NODE, gpios);
+static const struct device *leds = DEVICE_DT_GET(DT_NODELABEL(npm1300_leds));
 
 int main(void) {
-    int ret;
     bool led_state = true;
 
-    if (!gpio_is_ready_dt(&led)) {
-        return 0;
-    }
-
-    ret = gpio_pin_configure_dt(&led, GPIO_OUTPUT_ACTIVE);
-    if (ret < 0) {
+    if (!device_is_ready(leds)) {
+        printf("nPM1300 LED device not ready\n");
         return 0;
     }
 
     while (1) {
-        ret = gpio_pin_toggle_dt(&led);
-        if (ret < 0) {
-            return 0;
+        if (led_state) {
+            led_on(leds, NPM1300_LED_GREEN);
+        } else {
+            led_off(leds, NPM1300_LED_GREEN);
         }
 
         led_state = !led_state;

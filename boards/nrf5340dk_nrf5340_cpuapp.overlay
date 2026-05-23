@@ -1,24 +1,67 @@
-/ {
-    leds {
-        compatible = "gpio-leds";
+/*
+ * nPM1300 PMIC connected via I2C
+ * SCL: P1.02 (nRF5340) -> Pin 14 (nPM1300)
+ * SDA: P0.09 (nRF5340) -> Pin 13 (nPM1300)
+ * INT: P0.16 (nRF5340) <- GPIO1/Pin 8 (nPM1300)
+ */
 
-        led0: led_0 {
-            gpios = <&gpio1 6 GPIO_ACTIVE_HIGH>;  /* RED   - P1.06 */
-            label = "LED Red";
-        };
-        led1: led_1 {
-            gpios = <&gpio0 21 GPIO_ACTIVE_HIGH>; /* GREEN - P0.21 */
-            label = "LED Green";
-        };
-        led2: led_2 {
-            gpios = <&gpio1 8 GPIO_ACTIVE_HIGH>;  /* BLUE  - P1.08 */
-            label = "LED Blue";
-        };
-    };
+&pinctrl {
+	i2c1_default: i2c1_default {
+		group1 {
+			psels = <NRF_PSEL(TWIM_SDA, 0, 9)>,
+				<NRF_PSEL(TWIM_SCL, 1, 2)>;
+		};
+	};
 
-    aliases {
-        led0 = &led0;
-        led1 = &led1;
-        led2 = &led2;
-    };
+	i2c1_sleep: i2c1_sleep {
+		group1 {
+			psels = <NRF_PSEL(TWIM_SDA, 0, 9)>,
+				<NRF_PSEL(TWIM_SCL, 1, 2)>;
+			low-power-enable;
+		};
+	};
+};
+
+&i2c1 {
+	npm1300: pmic@6b {
+		compatible = "nordic,npm1300";
+		reg = <0x6b>;
+		host-int-gpios = <&gpio0 16 0>;
+		pmic-int-pin = <1>;
+
+		npm1300_regulators: regulators {
+			compatible = "nordic,npm1300-regulator";
+
+			/* BUCK1: Disabled (VSET1 tied to GND) */
+			npm1300_buck1: BUCK1 {
+			};
+
+			/* BUCK2: 3.3V output on VOUT2, powers MCU VDD via JP1 */
+			npm1300_buck2: BUCK2 {
+				regulator-min-microvolt = <3300000>;
+				regulator-max-microvolt = <3300000>;
+				regulator-init-microvolt = <3300000>;
+				regulator-boot-on;
+			};
+		};
+
+		npm1300_charger: charger {
+			compatible = "nordic,npm1300-charger";
+			term-microvolt = <4200000>;
+			term-warm-microvolt = <4000000>;
+			current-microamp = <150000>;
+			dischg-limit-microamp = <1000000>;
+			vbus-limit-microamp = <500000>;
+			thermistor-ohms = <10000>;
+			thermistor-beta = <3435>;
+		};
+
+		npm1300_leds: leds {
+			compatible = "nordic,npm1300-led";
+			/* LED0 (pin 25) = Blue, LED1 (pin 26) = Green, LED2 (pin 27) = Red */
+			nordic,led0-mode = "host";
+			nordic,led1-mode = "host";
+			nordic,led2-mode = "host";
+		};
+	};
 };

@@ -19,7 +19,6 @@
 / {
 	chosen {
 		zephyr,code-partition = &boot_partition;
-		zephyr,console = &cdc_acm_uart0;
 	};
 };
 

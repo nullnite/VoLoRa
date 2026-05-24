@@ -15,3 +15,17 @@
 &qspi {
 	status = "disabled";
 };
+
+/ {
+	chosen {
+		zephyr,code-partition = &boot_partition;
+		zephyr,console = &cdc_acm_uart0;
+	};
+};
+
+/* USB CDC ACM for serial recovery */
+&zephyr_udc0 {
+	cdc_acm_uart0: cdc_acm_uart0 {
+		compatible = "zephyr,cdc-acm-uart";
+	};
+};

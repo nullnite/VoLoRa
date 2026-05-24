@@ -1,21 +1,5 @@
 /* MCUboot overlay for VoLoRa custom board */
 
-/* No LFXO on this board */
-&lfxo {
-	status = "disabled";
-};
-
-/* HFXO: 8 pF with internal load capacitors */
-&hfxo {
-	load-capacitors = "internal";
-	load-capacitance-femtofarad = <8000>;
-};
-
-/* No QSPI flash on this board */
-&qspi {
-	status = "disabled";
-};
-
 / {
 	aliases {
 		mcuboot-button0 = &button0;
@@ -23,13 +7,6 @@
 
 	chosen {
 		zephyr,code-partition = &boot_partition;
-	};
-
-	buttons {
-		compatible = "gpio-keys";
-		button0: button_0 {
-			gpios = <&gpio1 13 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
-		};
 	};
 };
 

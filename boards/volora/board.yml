@@ -1,0 +1,6 @@
+board:
+  name: volora
+  full_name: VoLoRa
+  vendor: custom
+  socs:
+  - name: nrf5340

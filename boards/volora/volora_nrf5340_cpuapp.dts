@@ -65,6 +65,11 @@
 	status = "disabled";
 };
 
+/* Release NFC pins (P0.02, P0.03) for GPIO/PDM use */
+&uicr {
+	nfct-pins-as-gpios;
+};
+
 &gpio0 {
 	status = "okay";
 };

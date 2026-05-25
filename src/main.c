@@ -27,7 +27,7 @@
 #include "codec2.h"
 
 /* ── Radio config ─────────────────────────────────────────────────────────── */
-#define RF_FREQ 868000000
+#define RF_FREQ 868123456
 #define TX_POWER 14
 #define RF_BW BW_125_KHZ
 #define RF_SF SF_7
@@ -39,19 +39,31 @@
 #define C2_NSAM 160 /* samples per frame (8 kHz × 20 ms) */
 #define C2_NBYTE 6  /* encoded bytes per frame */
 #define FRAMES_PER_PKT 4
-#define PKT_LEN (FRAMES_PER_PKT * C2_NBYTE) /* 24 bytes */
+
+/* Packet layout: [1 byte header][FRAMES_PER_PKT × C2_NBYTE payload] = 25 bytes
+ *
+ * Header byte:
+ *   bits [7:4]  4-bit rolling sequence number (0–15)
+ *   bit  [3]    NEW_SESSION — set on first packet of each PTT press
+ *   bits [2:0]  reserved
+ */
+#define PKT_PAYLOAD (FRAMES_PER_PKT * C2_NBYTE) /* 24 bytes */
+#define PKT_LEN (1 + PKT_PAYLOAD)               /* 25 bytes */
+#define HDR_SEQ_SHIFT 4
+#define HDR_SEQ_MASK 0xF0U
+#define HDR_NEW_SESSION BIT(3)
 
 /* ── Audio config ─────────────────────────────────────────────────────────── */
 /* Request 8 kHz directly from the DMIC driver; it handles decimation internally
    with a better filter than our 2-tap pair-average. */
 #define PDM_SAMPLE_RATE 8000
-#define PDM_MIN_CLK     500000
-#define PDM_BLOCK_SIZE  (PDM_SAMPLE_RATE / 50 * sizeof(int16_t))
+#define PDM_MIN_CLK 500000
+#define PDM_BLOCK_SIZE (PDM_SAMPLE_RATE / 50 * sizeof(int16_t))
 #define PDM_BLOCK_COUNT 8
-#define I2S_SAMPLE_RATE   8000
+#define I2S_SAMPLE_RATE 8000
 #define I2S_BLOCK_SAMPLES C2_NSAM                                /* 160 = 20ms at 8 kHz */
-#define I2S_BLOCK_SIZE    (I2S_BLOCK_SAMPLES * 2 * sizeof(int16_t)) /* stereo */
-#define I2S_BLOCK_COUNT   4
+#define I2S_BLOCK_SIZE (I2S_BLOCK_SAMPLES * 2 * sizeof(int16_t)) /* stereo */
+#define I2S_BLOCK_COUNT 4
 
 /* ── Hardware nodes ───────────────────────────────────────────────────────── */
 #define AMP_EN_NODE DT_NODELABEL(amp_en)
@@ -73,10 +85,9 @@ typedef struct {
 } coded_frame_t;
 
 typedef struct {
-    uint8_t data[PKT_LEN]; /* 24 bytes */
+    uint8_t data[PKT_LEN]; /* 1 header + 24 payload = 25 bytes */
     uint16_t len;
     int16_t rssi;
-    bool first_in_session; /* decoder skips output on first RX packet */
 } lora_pkt_t;
 
 /* ── Message queues (4 total) ─────────────────────────────────────────────── */
@@ -214,8 +225,8 @@ static int spk_write_frame(const pcm_frame_t* frame) {
 
     /* I2S runs at 8 kHz — mono→stereo, no upsampling needed */
     for (int i = 0; i < C2_NSAM; i++) {
-        out[i * 2]     = frame->samples[i];  /* L */
-        out[i * 2 + 1] = frame->samples[i];  /* R */
+        out[i * 2] = frame->samples[i];     /* L */
+        out[i * 2 + 1] = frame->samples[i]; /* R */
     }
 
     int ret = i2s_write(i2s_dev, buf, I2S_BLOCK_SIZE);
@@ -336,19 +347,38 @@ static void encode_thread_fn(void* a, void* b, void* c) {
 static void decode_thread_fn(void* a, void* b, void* c) {
     lora_pkt_t pkt;
     pcm_frame_t frame;
+    uint8_t last_seq = 0xFF;
 
     while (true) {
-        if (k_msgq_get(&q3_rx_to_dec, &pkt, K_FOREVER) == 0) {
-            int frames = pkt.len / C2_NBYTE;
+        if (k_msgq_get(&q3_rx_to_dec, &pkt, K_FOREVER) != 0) {
+            continue;
+        }
+        if (pkt.len < 1 + C2_NBYTE) {
+            continue;
+        }
 
-            for (int f = 0; f < frames; f++) {
-                codec2_decode(codec2, frame.samples,
-                              &pkt.data[f * C2_NBYTE]);
-                /* First packet after TX→RX: decoder state is stale;
-                   run decode to warm it up but don't play the audio. */
-                if (!pkt.first_in_session) {
-                    k_msgq_put(&q4_dec_to_spk, &frame, K_MSEC(50));
-                }
+        uint8_t hdr = pkt.data[0];
+        uint8_t seq = (hdr & HDR_SEQ_MASK) >> HDR_SEQ_SHIFT;
+        bool new_session = (hdr & HDR_NEW_SESSION) != 0;
+
+        if (!new_session && last_seq != 0xFF) {
+            uint8_t expected = (last_seq + 1) & 0x0FU;
+            if (seq != expected) {
+                printk("[DEC] lost pkt: expected seq %d got %d\n",
+                       expected, seq);
+            }
+        }
+        last_seq = seq;
+
+        int frames = (pkt.len - 1) / C2_NBYTE;
+
+        for (int f = 0; f < frames; f++) {
+            codec2_decode(codec2, frame.samples,
+                          &pkt.data[1 + f * C2_NBYTE]);
+            /* First packet of a new PTT session: warm up decoder state
+               but don't play — avoids click/garbage on session start. */
+            if (!new_session) {
+                k_msgq_put(&q4_dec_to_spk, &frame, K_MSEC(50));
             }
         }
     }
@@ -377,10 +407,13 @@ static void lora_tx_thread_fn(void* a, void* b, void* c) {
     uint8_t pkt_buf[PKT_LEN];
     coded_frame_t coded;
     bool in_tx_mode = false;
+    bool session_started = false;
+    uint8_t tx_seq = 0;
 
     while (true) {
         if (!tx_active) {
             in_tx_mode = false;
+            session_started = false;
             k_msleep(10);
             continue;
         }
@@ -393,31 +426,33 @@ static void lora_tx_thread_fn(void* a, void* b, void* c) {
             in_tx_mode = true;
         }
 
-        /* Collect encoded frames */
-        int collected = 0;
+        /* Build header */
+        uint8_t hdr = (tx_seq & 0x0FU) << HDR_SEQ_SHIFT;
+        if (!session_started) {
+            hdr |= HDR_NEW_SESSION;
+            session_started = true;
+        }
+        tx_seq = (tx_seq + 1) & 0x0FU;
+        pkt_buf[0] = hdr;
+
+        /* Always collect exactly FRAMES_PER_PKT frames; pad zeros if TX ends early */
         for (int f = 0; f < FRAMES_PER_PKT; f++) {
-            if (!tx_active) {
-                break;
-            }
             if (k_msgq_get(&q2_enc_to_tx, &coded, K_MSEC(100)) == 0) {
-                memcpy(&pkt_buf[f * C2_NBYTE], coded.bits, C2_NBYTE);
-                collected++;
+                memcpy(&pkt_buf[1 + f * C2_NBYTE], coded.bits, C2_NBYTE);
             } else {
-                printk("[TX] q2 timeout (enc slow?)\n");
-                break;
+                memset(&pkt_buf[1 + f * C2_NBYTE], 0, C2_NBYTE);
             }
         }
 
-        if (collected > 0 && tx_active) {
-            int len = collected * C2_NBYTE;
-            k_mutex_lock(&radio_mutex, K_FOREVER);
-            int ret = lora_send(lora_dev, pkt_buf, len);
-            k_mutex_unlock(&radio_mutex);
-            if (ret < 0) {
-                printk("[TX] err %d\n", ret);
-            } else {
-                printk("[TX] %d B (%d frames)\n", len, collected);
-            }
+        k_mutex_lock(&radio_mutex, K_FOREVER);
+        int ret = lora_send(lora_dev, pkt_buf, PKT_LEN);
+        k_mutex_unlock(&radio_mutex);
+
+        if (ret < 0) {
+            printk("[TX] err %d\n", ret);
+        } else {
+            printk("[TX] seq=%d%s\n", (hdr >> HDR_SEQ_SHIFT),
+                   (hdr & HDR_NEW_SESSION) ? " NEW" : "");
         }
     }
 }
@@ -448,12 +483,9 @@ static void lora_rx_thread_fn(void* a, void* b, void* c) {
             continue;
         }
 
-        bool session_start = false;
-
         if (!in_rx_mode) {
             lora_configure(false);
             in_rx_mode = true;
-            session_start = true;
         }
 
         int len = lora_recv(lora_dev, buf, sizeof(buf),
@@ -465,8 +497,6 @@ static void lora_rx_thread_fn(void* a, void* b, void* c) {
                    len, rssi, snr);
             lora_pkt_t pkt = {0};
             pkt.rssi = rssi;
-            pkt.first_in_session = session_start;
-            session_start = false;
             memcpy(pkt.data, buf, MIN(len, (int)sizeof(pkt.data)));
             pkt.len = len;
             k_msgq_put(&q3_rx_to_dec, &pkt, K_NO_WAIT);

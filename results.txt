@@ -1,0 +1,212 @@
+
+Welcome to minicom 2.11.1
+
+OPTIONS: I18n
+Compiled on Mar  1 2026, 19:16:24.
+Port /dev/ttyACM0, 21:39:35 [F]
+
+Press CTRL-A Z for help on special keys
+
+*** Booting nRF Connect SDK v3.2.4-4c3fc0d44534 ***
+*** Using Zephyr OS v4.2.99-9673eec75908 ***
+=== VoLoRa Push-to-Talk ===
+max_amp: 80 m_pitch: 320
+p_min: 20 p_max: 160
+Wo_min: 0.039270 Wo_max: 0.314159
+nw: 279 tw: 40
+Ready — hold SW3 to talk
+[BENCH] TX start — sending 100 packets
+[MIC] block interval=20 ms  size=320 B  => actual_rate~8000 Hz
+[BENCH TX] 1/100
+[BENCH TX] 2/100
+[BENCH TX] 3/100
+[BENCH TX] 4/100
+[BENCH TX] 5/100
+[BENCH TX] 6/100
+[BENCH TX] 7/100
+[BENCH TX] 8/100
+[BENCH TX] 9/100
+[BENCH TX] 10/100
+[BENCH TX] 11/100
+[BENCH TX] 12/100
+[BENCH TX] 13/100
+[BENCH TX] 14/100
+[BENCH TX] 15/100
+[BENCH TX] 16/100
+[BENCH TX] 17/100
+[BENCH TX] 18/100
+[BENCH TX] 19/100
+[BENCH TX] 20/100
+[BENCH TX] 21/100
+[BENCH TX] 22/100
+[BENCH TX] 23/100
+[BENCH TX] 24/100
+[BENCH TX] 25/100
+[BENCH TX] 26/100
+[BENCH TX] 27/100
+[BENCH TX] 28/100
+[BENCH TX] 29/100
+[BENCH TX] 30/100
+[BENCH TX] 31/100
+[BENCH TX] 32/100
+[BENCH TX] 33/100
+[BENCH TX] 34/100
+[BENCH TX] 35/100
+[BENCH TX] 36/100
+[BENCH TX] 37/100
+[BENCH TX] 38/100
+[BENCH TX] 39/100
+[BENCH TX] 40/100
+[BENCH TX] 41/100
+[BENCH TX] 42/100
+[BENCH TX] 43/100
+[BENCH TX] 44/100
+[BENCH TX] 45/100
+[BENCH TX] 46/100
+[BENCH TX] 47/100
+[BENCH TX] 48/100
+[BENCH TX] 49/100
+[BENCH TX] 50/100
+[BENCH TX] 51/100
+[BENCH TX] 52/100
+[BENCH TX] 53/100
+[BENCH TX] 54/100
+[BENCH TX] 55/100
+[BENCH TX] 56/100
+0m
+[MIC] block interval=20 ms  size=320 B  => actual_rate~8000 Hz
+[BENCH] TX start — sending 100 packets
+[BENCH TX] 1/100
+[BENCH TX] 2/100
+[BENCH TX] 3/100
+[BENCH TX] 4/100
+[BENCH TX] 5/100
+[BENCH TX] 6/100
+[BENCH TX] 7/100
+[BENCH TX] 8/100
+[BENCH TX] 9/100
+[BENCH TX] 10/100
+[BENCH TX] 11/100
+[BENCH TX] 12/100
+[BENCH TX] 13/100
+[BENCH TX] 14/100
+[BENCH TX] 15/100
+[BENCH TX] 16/100
+[BENCH TX] 17/100
+[BENCH TX] 18/100
+[BENCH TX] 19/100
+[BENCH TX] 20/100
+[BENCH TX] 21/100
+[BENCH TX] 22/100
+[BENCH TX] 23/100
+[BENCH TX] 24/100
+[BENCH TX] 25/100
+[BENCH TX] 26/100
+[BENCH TX] 27/100
+[BENCH TX] 28/100
+[BENCH TX] 29/100
+[BENCH TX] 30/100
+[BENCH TX] 31/100
+[BENCH TX] 32/100
+[BENCH TX] 33/100
+[BENCH TX] 34/100
+[BENCH TX] 35/100
+[BENCH TX] 36/100
+[BENCH TX] 37/100
+[BENCH TX] 38/100
+[BENCH TX] 39/100
+[BENCH TX] 40/100
+[BENCH TX] 41/100
+[BENCH TX] 42/100
+[BENCH TX] 43/100
+[BENCH TX] 44/100
+[BENCH TX] 45/100
+[BENCH TX] 46/100
+[BENCH TX] 47/100
+[BENCH TX] 48/100
+[BENCH TX] 49/100
+[BENCH TX] 50/100
+[BENCH TX] 51/100
+[BENCH TX] 52/100
+[BENCH TX] 53/100
+[BENCH TX] 54/100
+[BENCH TX] 55/100
+[BENCH TX] 56/100
+0m
+[BENCH] RX session start  RSSI=-45 dBm  SNR=13 dB
+[BENCH] RX done — 100/100 packets (100%)  errors 0  RSSI=-30 dBm  SNR=13 dB
+10m
+[BENCH] RX session start  RSSI=-67 dBm  SNR=13 dB
+[BENCH] RX done — 100/100 packets (100%)  errors 0  RSSI=-68 dBm  SNR=13 dB
+50m
+[BENCH] RX session start  RSSI=-79 dBm  SNR=12 dB
+[BENCH] RX done — 100/100 packets (100%)  errors 0  RSSI=-82 dBm  SNR=13 dB
+100mm
+m
+
+ mm
+[BENCH] RX session start  RSSI=-98 dBm  SNR=11 dB
+[BENCH] RX done — 100/100 packets (100%)  errors 0  RSSI=-101 dBm  SNR=11 dB
+200m
+[BENCH] RX session start  RSSI=-112 dBm  SNR=1 dB
+[BENCH RX] pkt 13 payload error (byte 24: got 0x4c want 0x0c)
+[BENCH] RX done — 100/100 packets (100%)  errors 1  RSSI=-107 dBm  SNR=7 dB
+300m
+[BENCH] RX session start  RSSI=-98 dBm  SNR=11 dB
+[BENCH] RX done — 100/100 packets (100%)  errors 0  RSSI=-112 dBm  SNR=0 dB
+40000m
+[BENCH] RX session start  RSSI=-111 dBm  SNR=2 dB
+[BENCH RX] pkt 13 payload error (byte 1: got 0x3d want 0x0e)
+[BENCH] RX done — 97/100 packets (97%)  errors 1  RSSI=-107 dBm  SNR=5 dB
+500m
+[BENCH] RX session start  RSSI=-113 dBm  SNR=-7 dB
+[BENCH RX] pkt 33 payload error (byte 3: got 0x38 want 0x08)
+[BENCH RX] pkt 35 payload error (byte 11: got 0x39 want 0x0a)
+[BENCH RX] pkt 37 payload error (byte 18: got 0x6c want 0x0c)
+[BENCH RX] pkt 59 payload error (byte 11: got 0x04 want 0x06)
+[BENCH RX] pkt 60 payload error (byte 4: got 0x3a want 0x09)
+[BENCH RX] pkt 61 payload error (byte 1: got 0x4e want 0x0a)
+[RX] 25 B  RSSI=-114 dBm  SNR=-11 dB
+[SPK] start
+[BENCH RX] pkt 67 payload error (byte 14: got 0x2b want 0x0d)
+[BENCH RX] pkt 68 payload error (byte 18: got 0xa7 want 0x07)
+[BENCH RX] pkt 89 payload error (byte 7: got 0x28 want 0x08)                    +-----------------------------+
+[BENCH] RX done — 100/100 packets (100%)  errors 9  RSSI=-114 dBm  SNR=-7 dB    |                             |
+600 m                                                                           |  Cannot open /dev/ttyACM0!  |
+500m                                                                            |                             |
+[BENCH] RX session start  RSSI=-111 dBm  SNR=0 dB                               +-----------------------------+
+[BENCH RX] pkt 79 payload error (byte 1: got 0x04 want 0x01)
+[BENCH RX] pkt 80 payload error (byte 1: got 0x24 want 0x02)
+[BENCH] RX done — 85/100 packets (85%)  errors 2  RSSI=-113 dBm  SNR=-4 dB
+600m
+[BENCH] RX session start  RSSI=-112 dBm  SNR=-1 dB
+[BENCH RX] pkt 35 payload error (byte 7: got 0x8c want 0x02)
+[BENCH RX] pkt 36 payload error (byte 21: got 0x23 want 0x03)
+[BENCH RX] pkt 37 payload error (byte 1: got 0x97 want 0x07)
+[BENCH RX] pkt 63 payload error (byte 2: got 0x43 want 0x03)
+[BENCH RX] pkt 64 payload error (byte 23: got 0x0c want 0x04)
+[BENCH RX] pkt 65 payload error (byte 7: got 0xac want 0x05)
+[BENCH RX] pkt 66 payload error (byte 2: got 0x86 want 0x06)
+[BENCH RX] pkt 70 payload error (byte 16: got 0x02 want 0x0a)
+[BENCH RX] pkt 71 payload error (byte 21: got 0x0a want 0x0b)
+[BENCH RX] pkt 74 payload error (byte 10: got 0x53 want 0x03)
+[BENCH RX] pkt 80 payload error (byte 1: got 0x19 want 0x08)
+[BENCH] RX done — 86/100 packets (86%)  errors 11  RSSI=-113 dBm  SNR=-6 dB
+700m
+
+[BENCH] RX session start  RSSI=-114 dBm  SNR=-10 dB
+[BENCH RX] pkt 1 payload error (byte 1: got 0x07 want 0x05)
+[BENCH RX] pkt 7 payload error (byte 18: got 0x8d want 0x0d)
+[BENCH RX] pkt 10 payload error (byte 15: got 0x65 want 0x03)
+[BENCH RX] pkt 85 payload error (byte 21: got 0x98 want 0x01)
+700m
+[BENCH RX] pkt 178 payload error (byte 12: got 0x60 want 0x00)
+[BENCH] RX done — 181/100 packets (181%)  errors 5  RSSI=-112 dBm  SNR=-3 dB
+[BENCH] RX session start  RSSI=-112 dBm  SNR=-3 dB
+[BENCH] RX done — 100/100 packets (100%)  errors 0  RSSI=-111 dBm  SNR=0 dB
+800m
+[BENCH] RX done — 100/100 packets (100%)  errors 0  RSSI=-113 dBm  SNR=-9 dB
+900m
+[BENCH] RX done — 100/100 packets (100%)  errors 0  RSSI=-113 dBm  SNR=-4 dB
+1000m
+[BENCH] RX done — 100/100 packets (100%)  errors 0  RSSI=-112 dBm  SNR=-3 dB

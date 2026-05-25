@@ -52,6 +52,14 @@
 #define HDR_SEQ_SHIFT 4
 #define HDR_SEQ_MASK 0xF0U
 #define HDR_NEW_SESSION BIT(3)
+#define HDR_BENCHMARK BIT(2)      /* packet is part of a benchmark run */
+#define HDR_BENCHMARK_LAST BIT(1) /* last packet of the benchmark run */
+
+/* ── Benchmark config ─────────────────────────────────────────────────────── */
+/* Uncomment to compile in benchmark mode: PTT sends 100 dummy packets instead
+   of voice; the receiver counts and reports how many arrived. */
+#define BENCHMARK_MODE
+#define BENCHMARK_PKT_COUNT 100
 
 /* ── Audio config ─────────────────────────────────────────────────────────── */
 /* Request 8 kHz directly from the DMIC driver; it handles decimation internally
@@ -112,6 +120,12 @@ static struct gpio_callback sw3_cb_data;
 static struct CODEC2* codec2;
 
 static volatile bool tx_active; /* true = PTT held, transmitting */
+
+#ifdef BENCHMARK_MODE
+static int bench_rx_count;
+static int bench_rx_errors;
+static bool bench_rx_active;
+#endif
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * PTT button interrupt
@@ -424,6 +438,33 @@ static void lora_tx_thread_fn(void* a, void* b, void* c) {
             lora_configure(true);
             k_mutex_unlock(&radio_mutex);
             in_tx_mode = true;
+            tx_seq = 0;
+
+#ifdef BENCHMARK_MODE
+            printk("[BENCH] TX start — sending %d packets\n", BENCHMARK_PKT_COUNT);
+            for (int i = 0; i < BENCHMARK_PKT_COUNT; i++) {
+                uint8_t hdr = ((tx_seq & 0x0FU) << HDR_SEQ_SHIFT) | HDR_BENCHMARK;
+                if (i == 0)
+                    hdr |= HDR_NEW_SESSION;
+                if (i == BENCHMARK_PKT_COUNT - 1)
+                    hdr |= HDR_BENCHMARK_LAST;
+                tx_seq = (tx_seq + 1) & 0x0FU;
+                pkt_buf[0] = hdr;
+                /* payload = seq value repeated; receiver uses this to detect corruption */
+                memset(&pkt_buf[1], hdr >> HDR_SEQ_SHIFT, PKT_PAYLOAD);
+
+                k_mutex_lock(&radio_mutex, K_FOREVER);
+                int ret = lora_send(lora_dev, pkt_buf, PKT_LEN);
+                k_mutex_unlock(&radio_mutex);
+                printk("[BENCH TX] %d/%d%s\n", i + 1, BENCHMARK_PKT_COUNT,
+                       ret < 0 ? " ERR" : "");
+            }
+            printk("[BENCH] TX done\n");
+            while (tx_active) {
+                k_msleep(10);
+            }
+            continue;
+#endif
         }
 
         /* Build header */
@@ -493,13 +534,59 @@ static void lora_rx_thread_fn(void* a, void* b, void* c) {
         k_mutex_unlock(&radio_mutex);
 
         if (len > 0) {
-            printk("[RX] %d B  RSSI=%d dBm  SNR=%d dB\n",
-                   len, rssi, snr);
-            lora_pkt_t pkt = {0};
-            pkt.rssi = rssi;
-            memcpy(pkt.data, buf, MIN(len, (int)sizeof(pkt.data)));
-            pkt.len = len;
-            k_msgq_put(&q3_rx_to_dec, &pkt, K_NO_WAIT);
+#ifdef BENCHMARK_MODE
+            uint8_t hdr = buf[0];
+            if (hdr & HDR_BENCHMARK) {
+                if (hdr & HDR_NEW_SESSION) {
+                    if (bench_rx_active) {
+                        printk(
+                            "[BENCH] RX interrupted — received %d/%d"
+                            "  errors %d\n",
+                            bench_rx_count, BENCHMARK_PKT_COUNT,
+                            bench_rx_errors);
+                    }
+                    bench_rx_count = 0;
+                    bench_rx_errors = 0;
+                    bench_rx_active = true;
+                    printk("[BENCH] RX session start  RSSI=%d dBm  SNR=%d dB\n",
+                           rssi, snr);
+                }
+                if (bench_rx_active) {
+                    bench_rx_count++;
+
+                    /* verify payload: every byte should equal the seq nibble */
+                    uint8_t expected = (hdr & HDR_SEQ_MASK) >> HDR_SEQ_SHIFT;
+                    for (int b = 1; b < len; b++) {
+                        if (buf[b] != expected) {
+                            bench_rx_errors++;
+                            printk(
+                                "[BENCH RX] pkt %d payload error"
+                                " (byte %d: got 0x%02x want 0x%02x)\n",
+                                bench_rx_count, b, buf[b], expected);
+                            break;
+                        }
+                    }
+                }
+                if (hdr & HDR_BENCHMARK_LAST) {
+                    printk(
+                        "[BENCH] RX done — %d/%d packets (%.0f%%)"
+                        "  errors %d  RSSI=%d dBm  SNR=%d dB\n",
+                        bench_rx_count, BENCHMARK_PKT_COUNT,
+                        bench_rx_count * 100.0 / BENCHMARK_PKT_COUNT,
+                        bench_rx_errors, rssi, snr);
+                    bench_rx_active = false;
+                }
+            } else
+#endif
+            {
+                printk("[RX] %d B  RSSI=%d dBm  SNR=%d dB\n",
+                       len, rssi, snr);
+                lora_pkt_t pkt = {0};
+                pkt.rssi = rssi;
+                memcpy(pkt.data, buf, MIN(len, (int)sizeof(pkt.data)));
+                pkt.len = len;
+                k_msgq_put(&q3_rx_to_dec, &pkt, K_NO_WAIT);
+            }
         }
     }
 }
